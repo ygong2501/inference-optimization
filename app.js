@@ -11,36 +11,36 @@ const pair = (values) => values.map((value) => value.toFixed(2)).join(' / ');
 const copy = {
   npu: {
     baseline: {
-      kicker: 'HISTORICAL DEFAULT · LONG-LIVED RESIDUAL',
+      kicker: 'LONG-LIVED RESIDUAL',
       description: 'The Conv2 feature must survive five convolutions before Add23 consumes it.',
-      facts: [['Two round medians', `${pair(data.npu.baseline_ms)} ms`, 'Historical default · four physical compute tiles'], ['Main scheduling problem', 'Feature lifetime', 'Large residual regions span the convolution chain'], ['Numerical contract', 'Original weights', 'Keep the same six NPU reference outputs']],
+      facts: [['Two-round medians', `${pair(data.npu.baseline_ms)} ms`, 'Historical · 4 compute tiles'], ['Bottleneck', 'Feature lifetime', 'Conv2 → five convs → Add23'], ['Acceptance', '6 / 6 exact', 'Original NPU reference']],
     },
     optimized: {
       kicker: 'SHARED RESIDUAL · CMX',
       description: 'One Conv2 feature per block, shared by the main path and the residual path.',
-      facts: [['Two round medians', `${pair(data.npu.optimized_ms)} ms`, '15 column groups × H6 · six physical compute tiles'], ['Planned DDR payload / frame', `${data.npu.planned_total_mib.toFixed(2)} MiB`, 'Compiler-plan bytes · not measured bus traffic'], ['Conv2 / Conv21 writeback', '0 planned bytes', 'No explicit spills · all six output hashes match']],
+      facts: [['Two-round medians', `${pair(data.npu.optimized_ms)} ms`, '15 groups × H6 · 6 compute tiles'], ['Planned payload / frame', `${data.npu.planned_total_mib.toFixed(2)} MiB`, 'Logical read + write bytes'], ['Conv2 / Conv21 writeback', '0 planned bytes', 'No explicit spills · 6/6 exact']],
     },
     remaining: {
-      kicker: 'NEXT · REDUCE THE CRITICAL PATH',
+      kicker: 'NEXT · CRITICAL PATH',
       description: 'The shared-residual graph is verified. The remaining target is single-frame latency.',
-      facts: [['Gap to 15 ms', '1.14–1.18 ms', 'About 7% more latency reduction is required'], ['Five 32 → 32 convolutions', '≈97% of MACs', 'Nominal arithmetic share · not a wall-time share'], ['Next evidence gate', 'Profile → change → verify', 'Tune the dominant stage; retain all six exact outputs']],
+      facts: [['Gap to 15 ms', '1.14–1.18 ms', '≈7% more reduction'], ['Five 32 → 32 convs', '≈97% of MACs', 'Arithmetic share ≠ time share'], ['Acceptance gate', 'Profile → tune → verify', '6/6 exact → formal timing']],
     },
   },
   gpu: {
     baseline: {
-      kicker: 'NATIVE CONVOLUTIONS · MATERIALIZED OUTPUT STAGES',
+      kicker: 'NATIVE CONVS · SEPARATE OUTPUT STAGES',
       description: 'The native convolution path is fast; separate output stages create avoidable intermediates.',
-      facts: [['Two round medians', `${pair(data.gpu.baseline_ms)} ms`, 'Retained historical GPU baseline · not rerun'], ['Already fused by the backend', 'ReLU + residual Add', 'An extra standalone “fast ReLU” is not the opportunity'], ['Avoidable output work', 'Reorder + shuffle', 'Intermediate tensor writes and reads after Conv25']],
+      facts: [['Two-round medians', `${pair(data.gpu.baseline_ms)} ms`, 'Historical baseline · retained'], ['Already fused', 'ReLU + Add', 'Native convolution backend'], ['Bottleneck', 'Output intermediates', 'Reorder → shuffle → convert']],
     },
     optimized: {
-      kicker: 'NATIVE CONVOLUTIONS · FUSED OUTPUT KERNEL',
+      kicker: 'NATIVE CONVS · ONE OUTPUT KERNEL',
       description: 'Keep all seven native convolutions; fuse PixelShuffle, clamp and FP32 output conversion.',
-      facts: [['Two round medians', `${pair(data.gpu.optimized_ms)} ms`, 'Native seven-convolution path remains in use'], ['Eliminated intermediate payload', `${data.gpu.planned_intermediate_saving_mib.toFixed(2)} MiB`, 'Per frame · logical payload, not measured DDR traffic'], ['One output kernel', 'Shuffle + clip + FP32', 'Full 31.64 MiB output write remains necessary']],
+      facts: [['Two-round medians', `${pair(data.gpu.optimized_ms)} ms`, '7 native convolutions'], ['Intermediate payload saved', `${data.gpu.planned_intermediate_saving_mib.toFixed(2)} MiB`, 'Per frame · logical bytes'], ['Output processing', '1 fused kernel', '31.64 MiB final write retained']],
     },
     remaining: {
-      kicker: 'NEXT · MATRIX REUSE WITHOUT REGRESSING THE NATIVE PATH',
+      kicker: 'NEXT · MATRIX REUSE',
       description: 'Cross-convolution fusion reached 21.00 ms in research, still behind the adopted GPU artifact.',
-      facts: [['Gap to 15 ms', '2.58–2.68 ms', 'About 15% more latency reduction is required'], ['Research SLM kernel', '21.00 ms', 'Not adopted · shared memory alone did not beat native'], ['Next evidence gate', 'Fetch → reuse → occupancy', 'Preserve accumulation order, then validate and time']],
+      facts: [['Gap to 15 ms', '2.58–2.68 ms', '≈15% more reduction'], ['Research SLM route', '21.00 ms', 'Slower than native · not adopted'], ['Next tuning axis', 'Fetch → reuse → occupancy', 'Preserve order · 6/6 exact']],
     },
   },
 };
@@ -63,14 +63,14 @@ function drawNetwork() {
     <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#818c9b" stroke-width="1.5"/></marker><marker id="skip-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M1 1L9 5L1 9" fill="none" stroke="#cd77b1" stroke-width="1.5"/></marker></defs>`;
   if (npu && !baseline) {
     svg += '<rect x="132" y="16" width="960" height="383" rx="10" class="fusion-box"/>';
-    svg += text(610, 43, remaining ? 'Verified shared graph · optimize its critical path next' : 'One fused column group · 15 groups per full frame', 'caption');
+    svg += text(610, 43, remaining ? 'Shared graph · critical-path tuning' : 'One fused group · 15 column groups / frame', 'caption');
   } else {
     svg += '<rect x="132" y="126" width="960" height="135" rx="10" class="fusion-box"/>';
     svg += text(610, 149, npu ? 'Compiler-selected execution boundaries' : 'Native GPU convolution path · seven convolutions', 'caption');
   }
   if (remaining) {
     svg += '<rect x="316" y="158" width="458" height="92" rx="6" class="focus-box"/>';
-    svg += text(545, 124, 'Five 32 → 32 layers · ≈97% of nominal convolution MACs', 'caption accent-text');
+    svg += text(545, 124, 'Five 32 → 32 convs · ≈97% nominal MACs', 'caption accent-text');
   }
   const skipLabel = npu && !baseline ? 'Shared Conv2 · union halo · per-cluster offsets' : 'Long residual · Conv2 → Add23';
   svg += '<path d="M174 165V87H852V162" class="skip-wire" marker-end="url(#skip-arrow)"/>';
@@ -93,12 +93,11 @@ function drawNetwork() {
   svg += tensor(positions[7], 174, 61, 48, 4) + text(1024, 250, 'Conv25', 'layer-label') + text(1024, 271, '32 → 4', 'caption secondary');
   if (npu && !baseline) {
     svg += text(179, 295, 'CMX retained', 'tiny accent-text') + text(735, 295, 'Writeback: 0', 'tiny accent-text');
-    svg += text(259, 355, 'One Conv2 per block', 'caption') + text(259, 376, 'No duplicate recomputation', 'tiny secondary');
+    svg += text(259, 355, 'One Conv2 per block', 'caption') + text(259, 376, 'Shared, not recomputed', 'tiny secondary');
   } else if (npu) {
-    svg += text(377, 319, 'Residual lifetime + consumer-region mismatch', 'caption secondary');
-    svg += text(377, 340, 'Creates pressure on on-chip feature storage', 'tiny secondary');
+    svg += text(335, 319, 'Long lifetime · mismatched regions', 'caption secondary');
   } else {
-    svg += text(530, 292, 'ReLU and the residual Add were already fused by the native backend', 'tiny secondary');
+    svg += text(530, 292, 'ReLU + residual Add: already fused', 'tiny secondary');
   }
   svg += '<path d="M1024 284V325" class="wire" marker-end="url(#arrow)"/>';
   if (!baseline) {
@@ -109,7 +108,7 @@ function drawNetwork() {
     svg += arrow(969, 358, 884, 358) + text(803, 352, 'Clip [0,1] · FP32', 'caption') + text(803, 375, npu ? 'Fused tail' : 'One OpenCL kernel', 'tiny accent-text');
     svg += arrow(713, 358, 654, 358) + tensor(549, 333, 87, 46, 1) + text(592, 398, '4K Y · direct write', 'caption');
     if (npu) svg += text(1023, 417, 'PixelShuffle ×2', 'tiny secondary');
-    else svg += text(768, 424, 'Native BYXF FP16 → complete FP32 output · intermediate tensors eliminated', 'tiny secondary');
+    else svg += text(768, 424, 'BYXF FP16 → full FP32 · no tail intermediates', 'tiny secondary');
   } else {
     svg += '<rect x="880" y="330" width="186" height="46" rx="5" class="tensor-front"/>';
     svg += text(973, 350, npu ? 'PixelShuffle ×2' : 'Reorder · PixelShuffle ×2', 'tiny') + text(973, 366, 'Materialized stages', 'tiny secondary');
@@ -130,7 +129,6 @@ function render() {
   $('#execution-panel').setAttribute('aria-labelledby', `tab-${state.backend}`);
   viewButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === state.view)));
   $('#view-kicker').textContent = content.kicker;
-  $('#view-description').textContent = content.description;
   $('#view-facts').innerHTML = content.facts.map(([label, value, note]) => `<div><span class="fact-label">${label}</span><strong class="fact-value">${value}</strong><span class="fact-note">${note}</span></div>`).join('');
   drawNetwork();
 }
@@ -146,9 +144,12 @@ hardwareButtons.forEach((button, index) => {
 });
 viewButtons.forEach((button) => button.addEventListener('click', () => { state.view = button.dataset.view; render(); }));
 
-$('#latency-rows').innerHTML = ['npu', 'gpu'].map((backend, index) => {
-  const row = (label, values, css) => `<div class="latency-row"><div class="bar-label">${backend.toUpperCase()} <small>${label}</small></div><div class="bar-plot">${values.map((value) => `<span class="bar-pair ${css}" style="width:${value / 50 * 100}%"></span>`).join('')}<span class="bar-value">${pair(values)}</span></div></div>`;
-  return `${index ? '<div class="plot-group-divider"></div>' : ''}${row('Historical baseline', data[backend].baseline_ms, '')}${row('Adopted artifact', data[backend].optimized_ms, `optimized-${backend}`)}`;
+$('#latency-cards').innerHTML = ['npu', 'gpu'].map((backend) => {
+  const result = data[backend];
+  const reductions = result.baseline_ms.map((value, i) => Math.round((1 - result.optimized_ms[i] / value) * 100));
+  const row = (label, values, css) => `<div class="mini-row"><span>${label}</span><div class="mini-track" aria-hidden="true">${values.map((value) => `<span class="mini-bar ${css}" style="width:${value / 50 * 100}%"></span>`).join('')}</div><span class="mini-values">${pair(values)}</span></div>`;
+  return `<article class="latency-card"><div class="metric-top"><span class="card-label">${backend.toUpperCase()} / ms</span><span class="delta ${backend}-text">↓ ${Math.min(...reductions)}–${Math.max(...reductions)}%</span></div><div class="metric-value">${Math.min(...result.optimized_ms).toFixed(2)}<small>ms</small></div>${row('Before', result.baseline_ms, '')}${row('After', result.optimized_ms, `after-${backend}`)}</article>`;
 }).join('');
-$('#research-milestones').innerHTML = data.research.milestones.map(({ label, ms }) => `<div><span class="milestone-label">${label}</span><strong class="milestone-value">${ms.toFixed(2)}<small>ms</small></strong></div>`).join('');
+const milestoneLabels = ['Initial SLM', 'Row blocks + block IO', 'GRF256', 'Preload + residual reads'];
+$('#research-milestones').innerHTML = data.research.milestones.map(({ ms }, index) => `<div><strong class="milestone-value">${ms.toFixed(2)}<small>ms</small></strong><span class="milestone-label">${milestoneLabels[index]}</span></div>`).join('');
 render();
