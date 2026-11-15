@@ -1,59 +1,50 @@
 <!doctype html>
-<!-- @file English portfolio case study of verified C4F32 inference optimization, with interactive architecture and evidence views. -->
+<!-- @file Six-section English engineering case study of C4F32 NPU/GPU optimization with architecture, measurements and real video output. -->
 <!-- @see docs/code-index.xml -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Yikang Gong's compiler-to-kernel case study: optimizing ArtCNN inference on Intel Lunar Lake NPU and GPU while preserving bitwise output equality.">
+  <meta name="description" content="Yikang Gong reduced C4F32 luminance inference latency by 64–65% on Intel NPU and 16–19% on GPU through compiler scheduling and output-kernel fusion.">
   <meta name="theme-color" content="#fafbfd">
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Bit-exact inference on Intel NPU & GPU — Yikang Gong">
-  <meta property="og:description" content="Shared-residual CMX scheduling, GPU tail fusion, and evidence-driven kernel optimization. Six full reference frames, identical output bits.">
+  <meta property="og:title" content="CNN Inference Optimization — Yikang Gong">
+  <meta property="og:description" content="Compiler scheduling and GPU kernel fusion reduce inference latency while preserving output bits. Includes real 4K video and complete-frame validation.">
   <title>Inference optimization on NPU & GPU · Yikang Gong</title>
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <link rel="preload" href="./assets/fonts/archivo-400.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="./styles.css?v=76906659">
-  <script type="module" src="./app.js?v=139dd538"></script>
+  <link rel="stylesheet" href="./styles.css?v=75af6c8a">
+  <script type="module" src="./app.js?v=e5819fbc"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to case study</a>
-  <header class="site-header">
-    <a class="identity" href="https://github.com/ygong2501"><span class="monogram" aria-hidden="true">YG</span><span>Yikang Gong<small>Inference systems</small></span></a>
-    <nav aria-label="Page navigation"><a href="#video">Video</a><a href="#architecture">Graph</a><a href="#scope">Scope</a><a href="https://github.com/ygong2501/inference-optimization">GitHub ↗</a></nav>
-  </header>
+  <header class="site-header"><a class="identity" href="https://github.com/ygong2501"><span class="monogram" aria-hidden="true">YG</span><span>Yikang Gong<small>Inference systems</small></span></a><nav aria-label="Page navigation"><a href="#engineering">Methods</a><a href="#video">Results</a><a href="https://github.com/ygong2501/inference-optimization">GitHub ↗</a></nav></header>
   <main id="main">
-    <section class="hero" aria-labelledby="project-title">
-      <div class="hero-heading"><div><p class="eyebrow">C4F32 / Y-ONLY SUPER-RESOLUTION</p><h1 id="project-title">Same CNN. Faster inference.</h1></div><span class="target-badge">15 ms target <strong>still open</strong></span></div>
-      <div class="spec-strip" aria-label="Workload"><span>1080p Y <b>→</b> 4K Y</span><span>47.7K parameters</span><span>Batch 1</span><span>FP32 Y output</span></div>
-      <div class="outcomes"><div id="latency-cards" class="latency-cards"></div><article class="validation-card"><span class="card-label">OUTPUT EQUALITY</span><strong class="validation-number">6<span>/6</span></strong><div class="frame-checks" aria-label="Six frames passed"><i>✓</i><i>✓</i><i>✓</i><i>✓</i><i>✓</i><i>✓</i></div><span>Bitwise exact · per-backend reference</span><small>49.8M FP32 Y elements · weights unchanged</small></article></div>
-      <div class="result-caption"><span>Two-round medians · synchronous latency</span><span>Historical baselines · campaign-wide gains <a href="./evidence/methodology.html">Method ↗</a></span></div>
-    </section>
-
-    <section id="video" class="media-section section-anchor" aria-labelledby="video-title">
-      <div class="section-heading"><div><p class="eyebrow">00 / REAL OUTPUT</p><h2 id="video-title">The output, in motion.</h2></div><span class="research-label">Offline render · 96 consecutive frames</span></div>
-      <div class="media-toolbar"><div class="video-switch" role="group" aria-label="Video result"><button type="button" data-video="source" aria-pressed="false">Input ×2</button><button type="button" data-video="gpu" aria-pressed="true">GPU</button><button type="button" data-video="npu" aria-pressed="false">NPU</button></div><span id="video-plane-label">Y: C4F32 ×2 · U/V: bicubic</span></div>
-      <video id="demo-video" controls playsinline muted preload="metadata" poster="./assets/video/gpu-poster.jpg" src="./assets/video/gpu.mp4" aria-label="Actual 4K output from the optimized GPU inference executable"></video>
-      <div class="media-caption"><span id="video-status" role="status">4.004 s · 23.976 fps · 4K display copy</span><a id="video-download" href="./assets/video/gpu.mp4" target="_blank" rel="noopener">Open 4K clip ↗</a></div>
-      <div class="plane-flow" aria-label="Processing scope"><div><span class="plane-name">Y</span><span class="flow-arrow">→</span><strong class="timed-stage">C4F32 ×2<small>timed inference</small></strong><span class="flow-arrow">→</span><span>4K Y</span></div><div><span class="plane-name">U/V</span><span class="flow-arrow">→</span><strong class="chroma-stage">Bicubic ×2<small>outside inference timing</small></strong><span class="flow-arrow">→</span><span>4K U/V</span></div><span class="merge-output">Y + U/V <b>→</b> color video</span></div>
-      <div class="detail-heading"><h3>Same coordinates. Before encoding.</h3><label>Detail frame <select id="detail-frame" aria-label="Detail frame"><option value="0">1 / 96</option><option value="48">49 / 96</option><option value="95">96 / 96</option></select></label></div>
-      <div class="detail-grid"><figure><figcaption>Input Y ×2 <small>nearest · pixel inspection</small></figcaption><a id="detail-source-link" href="./assets/video/f000-source.webp" target="_blank" rel="noopener"><img id="detail-source" src="./assets/video/f000-source.webp" alt="512 by 512 crop of the input, with nearest-neighbor luminance enlargement" loading="lazy" width="512" height="512"></a></figure><figure><figcaption id="detail-output-label">Optimized GPU <small>C4F32 Y · common U/V</small></figcaption><a id="detail-output-link" href="./assets/video/f000-gpu.webp" target="_blank" rel="noopener"><img id="detail-output" src="./assets/video/f000-gpu.webp" alt="Actual optimized GPU inference output at the same crop coordinates" loading="lazy" width="512" height="512"></a></figure><figure><figcaption>Reference − optimized <small>absolute Y difference ×1024</small></figcaption><a id="detail-difference-link" href="./assets/video/f000-gpu-difference.png" target="_blank" rel="noopener"><img id="detail-difference" src="./assets/video/f000-gpu-difference.png" alt="Black difference map: no differing FP32 luminance elements" loading="lazy" width="512" height="512"></a></figure></div>
-      <div class="media-checks"><span>GPU: <b>96 / 96 exact</b></span><span>NPU: <b>96 / 96 exact</b></span><span>Complete FP32 Y · own backend reference</span><span>512×512 crops · tap for full pixels</span></div>
-      <div class="constraint-strip"><span>Input ×2 uses nearest Y for pixel inspection.</span><span>Source excerpt: Doraemon · no audio · no 4K ground truth</span></div>
+    <section id="abstract" class="hero paper-hero section-anchor" aria-labelledby="project-title">
+      <div class="paper-title"><p class="eyebrow">ML SYSTEMS / INDEPENDENT PROJECT</p><h1 id="project-title">Reducing CNN Inference Latency<br> on a Laptop NPU and GPU</h1><div class="paper-byline">Yikang Gong <span>November 2026 · Intel Lunar Lake</span></div></div>
+      <nav class="paper-toc" aria-label="Paper sections"><a href="#abstract"><span>01</span> Abstract</a><a href="#architecture"><span>02</span> Problem</a><a href="#engineering"><span>03</span> Methods</a><a href="#video"><span>04</span> Results</a><a href="#discussion"><span>05</span> Discussion</a><a href="#scope"><span>06</span> Conclusion</a></nav>
+      <div class="section-heading"><div><p class="eyebrow">01 / ABSTRACT</p><h2>Abstract</h2></div></div>
+      <p class="paper-paragraph abstract-text">I reduced C4F32’s 1080p→4K luminance inference latency by 64–65% on the NPU and 16–19% on the GPU. The changes preserve the learned weights and each backend’s output bits.</p>
+      <div class="spec-strip" aria-label="Workload"><span>1080p Y <b>→</b> 4K Y</span><span>47,716 parameters</span><span>Batch 1</span><span>Complete FP32 Y output</span></div>
+      <div class="outcomes"><div id="latency-cards" class="latency-cards"></div><article class="validation-card"><span class="card-label">OUTPUT CORRECTNESS</span><strong class="validation-number">96<span>/96</span></strong><div class="equality-mark"><span>Original</span><b>=</b><span>Optimized</span></div><span>GPU and NPU · each backend</span><small>Six benchmark frames also match</small></article></div>
+      <div class="result-caption"><span>Two-round medians · synchronous Y inference</span><span>Gains span driver and resource changes. <a href="./evidence/methodology.html">Historical comparison ↗</a></span></div>
     </section>
 
     <section id="architecture" class="architecture-section section-anchor" aria-labelledby="architecture-title">
-      <div class="section-heading"><div><p class="eyebrow">01 / EXECUTION</p><h2 id="architecture-title">Follow the feature tensor.</h2></div><div class="hardware-switch" role="tablist" aria-label="Execution backend"><button id="tab-npu" type="button" role="tab" aria-selected="true" aria-controls="execution-panel" data-backend="npu">NPU</button><button id="tab-gpu" type="button" role="tab" aria-selected="false" aria-controls="execution-panel" data-backend="gpu" tabindex="-1">GPU</button></div></div>
+      <div class="section-heading"><div><p class="eyebrow">02 / PROBLEM</p><h2 id="architecture-title">Problem</h2></div><div class="hardware-switch" role="tablist" aria-label="Execution backend"><button id="tab-npu" type="button" role="tab" aria-selected="true" aria-controls="execution-panel" data-backend="npu">NPU</button><button id="tab-gpu" type="button" role="tab" aria-selected="false" aria-controls="execution-panel" data-backend="gpu" tabindex="-1">GPU</button></div></div>
+      <p class="paper-paragraph">Conv2 feeds two consumers separated by five convolutions, which extends the lifetime of its feature map. The GPU already fused ReLU and the residual add, but its output path still created intermediate tensors.</p>
       <div id="execution-panel" role="tabpanel" aria-labelledby="tab-npu">
-        <div class="graph-toolbar"><div class="view-switch" role="group" aria-label="Execution view"><button type="button" aria-pressed="false" data-view="baseline">Before</button><button type="button" aria-pressed="true" data-view="optimized">After</button><button type="button" aria-pressed="false" data-view="remaining">Next</button></div><span id="view-kicker" class="view-kicker" aria-live="polite">SHARED RESIDUAL · CMX</span></div>
+        <div class="graph-toolbar"><div class="view-switch" role="group" aria-label="Execution view"><button type="button" aria-pressed="true" data-view="baseline">Before</button><button type="button" aria-pressed="false" data-view="optimized">After</button><button type="button" aria-pressed="false" data-view="remaining">Next</button></div><span id="view-kicker" class="view-kicker" aria-live="polite">LONG-LIVED RESIDUAL</span></div>
         <div class="diagram-scroll" tabindex="0" role="region" aria-label="Network diagram; scroll horizontally on small screens"><svg id="network" viewBox="0 0 1120 430" role="img" aria-labelledby="network-title network-desc"><title id="network-title">C4F32 execution graph</title><desc id="network-desc">Seven convolutions, a long residual, PixelShuffle and complete FP32 output.</desc></svg></div>
         <div class="diagram-key"><span><i class="key-square"></i>Tensor</span><span><i class="key-line"></i>Residual</span><span><i class="key-square fusion-key"></i>Fusion boundary</span><span class="diagram-contract">3×3 + bias · stride 1 · pad 1</span></div>
         <div id="view-facts" class="view-facts" aria-live="polite"></div>
       </div>
+      <div class="figure-caption">Figure 1. The long residual and the output stages determine which intermediate tensors must remain available. Model: <a href="https://github.com/Artoriuz/ArtCNN">ArtCNN</a>; runtime: <a href="https://github.com/openvinotoolkit/openvino">OpenVINO</a>.</div>
     </section>
 
     <section id="engineering" class="section-anchor" aria-labelledby="engineering-title">
-      <div class="section-heading"><div><p class="eyebrow">02 / DATA MOVEMENT</p><h2 id="engineering-title">Two bottlenecks. Two fixes.</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">03 / METHODS</p><h2 id="engineering-title">Methods</h2></div></div>
+      <p class="paper-paragraph">I modified the NPU compiler to merge halo requirements and share Conv2 subviews in CMX. For the GPU, I retained native convolutions and wrote one output kernel for PixelShuffle, clipping and FP32 conversion.</p>
       <div class="comparison-grid">
         <article class="change-card npu-card"><div class="change-heading"><span class="backend-label npu-text">NPU</span><h3>Share the residual.</h3></div>
           <svg viewBox="0 0 520 228" role="img" aria-labelledby="npu-change-title"><title id="npu-change-title">Before: a materialized residual. After: one CMX feature shared by main and skip views.</title><defs><marker id="npu-tip" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M1 1L9 5L1 9" fill="none" stroke="#8c98aa" stroke-width="1.5"/></marker></defs>
@@ -73,20 +64,41 @@
         </article>
       </div>
       <div class="constraint-strip"><span>31.64 MiB final FP32 write: <b>retained</b></span><span>Logical payload ≠ measured DDR traffic</span></div>
+      <div class="figure-caption">Figure 2. Shared activation storage on NPU; fused output processing on GPU. Both paths retain the original weights and rounding boundaries.</div>
     </section>
 
-    <section class="research-section section-anchor" aria-labelledby="research-title">
-      <div class="section-heading"><div><p class="eyebrow">03 / GPU RESEARCH</p><h2 id="research-title">Fix the fetch. Then decide.</h2></div><span class="research-label">Experimental · not adopted</span></div>
+    <section id="video" class="media-section section-anchor" aria-labelledby="video-title">
+      <div class="section-heading"><div><p class="eyebrow">04 / RESULTS</p><h2 id="video-title">Results</h2></div><span class="research-label">Offline render · 96 consecutive frames</span></div>
+      <p class="paper-paragraph">Both optimized artifacts match the original model on the six benchmark frames. They also match on all 96 consecutive frames of the video below, checked as complete FP32 Y arrays before encoding.</p>
+      <div class="result-table-wrap"><table class="compact-table results-table"><caption>Two timing rounds · batch 1 · profiling off</caption><thead><tr><th>Backend</th><th>Median / ms</th><th>p95 / ms</th><th>Samples</th></tr></thead><tbody id="timing-rows"></tbody></table></div>
+      <div class="media-toolbar"><div class="video-switch" role="group" aria-label="Video result"><button type="button" data-video="source" aria-pressed="false">Input ×2</button><button type="button" data-video="gpu" aria-pressed="true">GPU</button><button type="button" data-video="npu" aria-pressed="false">NPU</button></div><span id="video-plane-label">Y: C4F32 ×2 · U/V: bicubic</span></div>
+      <video id="demo-video" controls playsinline muted preload="metadata" poster="./assets/video/gpu-poster.jpg" src="./assets/video/gpu.mp4" aria-label="Actual 4K output from the optimized GPU inference executable"></video>
+      <div class="media-caption"><span id="video-status" role="status">4.004 s · 23.976 fps · 4K display copy</span><a id="video-download" href="./assets/video/gpu.mp4" target="_blank" rel="noopener">Open 4K clip ↗</a></div>
+      <div class="plane-flow" aria-label="Processing scope"><div><span class="plane-name">Y</span><span class="flow-arrow">→</span><strong class="timed-stage">C4F32 ×2<small>timed inference</small></strong><span class="flow-arrow">→</span><span>4K Y</span></div><div><span class="plane-name">U/V</span><span class="flow-arrow">→</span><strong class="chroma-stage">Bicubic ×2<small>outside inference timing</small></strong><span class="flow-arrow">→</span><span>4K U/V</span></div><span class="merge-output">Y + U/V <b>→</b> color video</span></div>
+      <div class="detail-heading"><h3>Same coordinates. Before encoding.</h3><label>Detail frame <select id="detail-frame" aria-label="Detail frame"><option value="0">1 / 96</option><option value="48">49 / 96</option><option value="95">96 / 96</option></select></label></div>
+      <div class="detail-grid"><figure><figcaption>Input Y ×2 <small>nearest · pixel inspection</small></figcaption><a id="detail-source-link" href="./assets/video/f000-source.webp" target="_blank" rel="noopener"><img id="detail-source" src="./assets/video/f000-source.webp" alt="512 by 512 crop of the input, with nearest-neighbor luminance enlargement" loading="lazy" width="512" height="512"></a></figure><figure><figcaption id="detail-output-label">Optimized GPU <small>C4F32 Y · common U/V</small></figcaption><a id="detail-output-link" href="./assets/video/f000-gpu.webp" target="_blank" rel="noopener"><img id="detail-output" src="./assets/video/f000-gpu.webp" alt="Actual optimized GPU inference output at the same crop coordinates" loading="lazy" width="512" height="512"></a></figure><figure><figcaption>Reference − optimized <small>absolute Y difference ×1024</small></figcaption><a id="detail-difference-link" href="./assets/video/f000-gpu-difference.png" target="_blank" rel="noopener"><img id="detail-difference" src="./assets/video/f000-gpu-difference.png" alt="Black difference map: no differing FP32 luminance elements" loading="lazy" width="512" height="512"></a></figure></div>
+      <div class="media-checks"><span>GPU: <b>96 / 96 exact</b></span><span>NPU: <b>96 / 96 exact</b></span><span>Complete FP32 Y · own backend reference</span><span>512×512 crops · tap for full pixels</span></div>
+      <div class="constraint-strip"><span>Input ×2 uses nearest Y for pixel inspection.</span><span>Source excerpt: Doraemon · no audio · no 4K ground truth</span></div>
+      <div class="figure-caption">Figure 3. Actual inference output and a fixed-coordinate crop. The black difference map compares each optimized artifact with its original backend reference.</div>
+    </section>
+
+    <section id="discussion" class="research-section section-anchor" aria-labelledby="research-title">
+      <div class="section-heading"><div><p class="eyebrow">05 / DISCUSSION</p><h2 id="research-title">Discussion</h2></div><span class="research-label">Experimental · not adopted</span></div>
+      <p class="paper-paragraph">The 311 ms kernel used scalar gathers and repeated address calculations, with less operand reuse than the native convolutions. Block IO and preloading reduced it to 21.00 ms, but the adopted 17.58 ms path remained faster.</p>
       <div id="research-milestones" class="research-milestones"></div>
       <div class="research-bottom"><table class="compact-table"><caption class="sr-only">GPU research data-path changes</caption><thead><tr><th>Data path</th><th>Initial</th><th>Revised</th></tr></thead><tbody><tr><th>Matrix tile</th><td>M8 × N16</td><td>M32 × N32</td></tr><tr><th>Fetch</th><td>Scalar gathers</td><td>Subgroup block IO</td></tr><tr><th>Reuse</th><td>K-loop address work</td><td>Preload + GRF256</td></tr></tbody></table><div class="decision-diagram"><span class="card-label">ADOPTION GATE</span><div><span><strong>21.00</strong><small>Research / ms</small></span><b> &gt; </b><span class="gpu-text"><strong>17.58</strong><small>Native path / ms</small></span></div><span class="decision-tag">Keep the native path</span></div></div>
+      <div class="figure-caption">Figure 4. Improvements within the experimental route. Its result did not replace the faster native-convolution artifact.</div>
+      <div class="transfer-discussion"><table class="compact-table transfer-table"><caption>Transferability</caption><thead><tr><th>Method</th><th>Retune for</th></tr></thead><tbody><tr><th>Eliminate intermediates</th><td>Layout + rounding</td></tr><tr><th>Share residual storage</th><td>Halo + lifetimes</td></tr><tr><th>Reuse matrix operands</th><td>Registers + subgroup</td></tr><tr><th>15 groups × H6 / 6 tiles</th><td>C4F32 + NPU compiler</td></tr><tr><th>GRF256 + Intel block IO</th><td>Model + Intel GPU</td></tr></tbody></table><div class="scope-note">The methods can be reused; these settings were measured only on C4F32 and Lunar Lake. Cross-model speedups remain untested.</div></div>
     </section>
 
-    <section id="scope" class="section-anchor" aria-labelledby="scope-title">
-      <div class="section-heading"><div><p class="eyebrow">04 / VALIDATION & TRANSFER</p><h2 id="scope-title">What holds. What needs retuning.</h2></div></div>
-      <div class="scope-grid"><div><table class="compact-table"><caption>Acceptance contract</caption><tbody><tr><th>Weights</th><td>Unchanged</td><td class="pass">✓</td></tr><tr><th>Outputs</th><td>6 full FP32 frames</td><td class="pass">✓</td></tr><tr><th>Equality</th><td>Own backend reference</td><td class="pass">✓</td></tr><tr><th>Timing</th><td>2 rounds · profiling off</td><td class="pass">✓</td></tr><tr><th>New video</th><td>96 frames / backend</td><td class="pass">✓</td></tr><tr><th>Playback / energy</th><td>Not validated</td><td class="pending">—</td></tr></tbody></table><div class="evidence-links"><a href="./evidence/validation.html">Validation ↗</a><a href="./evidence/methodology.html">Protocol ↗</a><a href="./evidence/results.json" download>Data ↓</a></div></div><div><table class="compact-table transfer-table"><caption>Transferability</caption><thead><tr><th>Method</th><th>Retune for</th></tr></thead><tbody><tr><th>Eliminate intermediates</th><td>Layout + rounding</td></tr><tr><th>Share residual storage</th><td>Halo + lifetimes</td></tr><tr><th>Reuse matrix operands</th><td>Registers + subgroup</td></tr><tr><th>15 groups × H6 / 6 tiles</th><td>C4F32 + NPU compiler</td></tr><tr><th>GRF256 + Intel block IO</th><td>Model + Intel GPU</td></tr></tbody></table><div class="scope-note">Cross-model speedups: untested</div></div></div>
+    <section id="scope" class="conclusion-section section-anchor" aria-labelledby="scope-title">
+      <div class="section-heading"><div><p class="eyebrow">06 / CONCLUSION</p><h2 id="scope-title">Conclusion</h2></div></div>
+      <p class="paper-paragraph">The adopted paths execute the same model faster while preserving its output bits. The NPU runs at 16.14–16.18 ms and the GPU at 17.58–17.68 ms. The next step is to measure the complete playback path and continue toward 15 ms single-frame latency.</p>
+      <table class="compact-table conclusion-table"><tbody><tr><th>Measured</th><td>Synchronous Y inference with complete CPU-accessible FP32 output</td></tr><tr><th>Video demonstration</th><td>Offline render; common bicubic U/V; original frame rate</td></tr><tr><th>Still open</th><td>15 ms single-frame latency; continuous playback; energy</td></tr></tbody></table>
+      <div class="evidence-links"><a href="./evidence/methodology.html">Measurement protocol ↗</a><a href="./evidence/validation.html">Validation record ↗</a><a href="./evidence/results.json" download>Experiment data ↓</a></div>
     </section>
   </main>
-  <footer class="site-footer"><span>Yikang Gong · November 2026</span><span><a href="./evidence/methodology.html">Technical notes</a><a href="https://github.com/ygong2501/inference-optimization">GitHub ↗</a></span></footer>
-  <noscript><div class="noscript-note">NPU: 16.14 / 16.18 ms. GPU: 17.68 / 17.58 ms. JavaScript enables the charts and architecture controls.</div></noscript>
+  <footer class="site-footer"><span>Yikang Gong · November 2026</span><span><a href="./evidence/methodology.html">Technical notes</a><a href="https://github.com/ygong2501/inference-optimization">Project repository ↗</a></span></footer>
+  <noscript><div class="noscript-note">NPU: 16.14 / 16.18 ms. GPU: 17.68 / 17.58 ms. JavaScript enables charts, graph controls and video switching.</div></noscript>
 </body>
 </html>

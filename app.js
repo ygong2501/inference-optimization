@@ -6,7 +6,7 @@ const $ = (selector) => document.querySelector(selector);
 const section = $('#architecture');
 const hardwareButtons = [...document.querySelectorAll('[data-backend]')];
 const viewButtons = [...document.querySelectorAll('[data-view]')];
-const state = { backend: 'npu', view: 'optimized' };
+const state = { backend: 'npu', view: 'baseline' };
 const pair = (values) => values.map((value) => value.toFixed(2)).join(' / ');
 const copy = {
   npu: {
@@ -152,6 +152,7 @@ $('#latency-cards').innerHTML = ['npu', 'gpu'].map((backend) => {
 }).join('');
 const milestoneLabels = ['Initial SLM', 'Row blocks + block IO', 'GRF256', 'Preload + residual reads'];
 $('#research-milestones').innerHTML = data.research.milestones.map(({ ms }, index) => `<div><strong class="milestone-value">${ms.toFixed(2)}<small>ms</small></strong><span class="milestone-label">${milestoneLabels[index]}</span></div>`).join('');
+$('#timing-rows').innerHTML = ['npu', 'gpu'].map((backend) => `<tr><th>${backend.toUpperCase()}</th><td>${pair(data[backend].optimized_ms)}</td><td>${pair(data[backend].p95_ms)}</td><td>${data[backend].iterations.join(' / ')}</td></tr>`).join('');
 render();
 
 const video = $('#demo-video');

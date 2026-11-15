@@ -1,25 +1,62 @@
-# Bit-exact inference on Intel NPU and GPU
+# Reducing CNN Inference Latency on a Laptop NPU and GPU
 
-An English technical portfolio for Yikang Gong: an interactive C4F32 architecture case study with measured NPU/GPU results, a validation protocol and explicit limits. Built for GitHub Pages with plain HTML, CSS, SVG and JavaScript. No package install or frontend build is required.
+Yikang Gong · Independent systems project · November 2026
 
-## Preview
+[Interactive case study](https://ygong2501.github.io/inference-optimization/) · [Actual video output](https://ygong2501.github.io/inference-optimization/#video)
 
-From this directory, run `python -m http.server 8090 --bind 127.0.0.1`, then open `http://127.0.0.1:8090`. Serve over HTTP: JavaScript modules do not work reliably via `file://`.
+## 1. Abstract
 
-## Publish to GitHub Pages
+I reduced C4F32’s 1080p→4K luminance inference latency by 64–65% on the NPU and 16–19% on the GPU. The changes preserve the learned weights and each backend’s output bits.
 
-Copy this directory's contents, including `.github`, into a dedicated repository. Under **Settings → Pages → Build and deployment**, choose **GitHub Actions**. Push to `main` or run the **Deploy portfolio to GitHub Pages** workflow manually. The bundled workflow uploads the static files and deploys with GitHub's official Pages actions. No external host or tracking script is used.
+| Two-round medians | NPU | GPU |
+| --- | --- | --- |
+| Historical baseline | 44.46 / 46.15 ms | 21.11 / 21.80 ms |
+| Adopted implementation | **16.14 / 16.18 ms** | **17.68 / 17.58 ms** |
 
-All assets use relative URLs, so the same files work at either a user-site root or a project-site subpath. `index.html`, `app.js`, `styles.css`, `assets/` and `evidence/` are the deployable site. The evidence directory contains only the curated public record; do not add raw experiment reports, reference videos, device blobs, credentials or local machine details.
+The comparison spans driver and resource changes across the optimization campaign. The values measure synchronous Y inference with complete CPU-accessible FP32 output.
 
-GitHub's [custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages) describes the required Pages settings and permissions.
+## 2. Problem
 
-## Evidence updates
+Conv2 feeds two consumers separated by five convolutions, which extends the lifetime of its feature map. The GPU already fused ReLU and the residual add, but its output path still created intermediate tensors.
 
-The page includes a four-second offline video demonstration: 96 consecutive frames processed by the delivered GPU and NPU executables, with complete FP32 Y comparison against each original backend. U/V use the same bicubic reconstruction; H.264 files are display copies. This does not extend the published inference timing to decode, color reconstruction, encoding or real-time playback.
+The model uses 47,716 parameters and seven convolutions. It takes one 1080p luminance plane and returns one 4K luminance plane. The learned model comes from [Artoriuz/ArtCNN](https://github.com/Artoriuz/ArtCNN); inference uses [OpenVINO](https://github.com/openvinotoolkit/openvino).
 
-The public metrics were exported from retained experiment reports; no inference was rerun to create this page. Internal compiler patches, GPU kernel sources, exact driver details and experiment fingerprints remain local and are not included in this public repository. The local evidence exporter is not part of the deployable site.
+## 3. Methods
 
-Before changing headline numbers, update the underlying evidence. Keep campaign-wide comparisons distinct from isolated changes, logical payload counts distinct from physical traffic, and throughput distinct from synchronous latency. The 15 ms single-frame target is still open.
+I modified the NPU compiler to merge halo requirements and share Conv2 subviews in CMX. For the GPU, I retained native convolutions and wrote one output kernel for PixelShuffle, clipping and FP32 conversion.
 
-See [RESUME.md](./RESUME.md) for concise résumé wording, and [the protocol](./evidence/methodology.md) for validation scope and attribution.
+| Backend | Execution change | Observed plan change |
+| --- | --- | --- |
+| NPU | Shared residual views; 15 column groups × H6; 6 compute tiles | Conv2/Conv21 planned writeback and explicit spills: 0 |
+| GPU | Native convolutions followed by one OpenCL output kernel | 63.28 MiB/frame of intermediate logical reads/writes removed |
+
+These byte counts describe compiler plans or tensor payloads. They are not measurements of physical DDR traffic. [Explore the execution graph](https://ygong2501.github.io/inference-optimization/#architecture).
+
+## 4. Results
+
+Both optimized artifacts match the original model on the six benchmark frames. They also match on all 96 consecutive frames of the demonstration, checked as complete FP32 Y arrays before encoding.
+
+[![Watch the actual GPU/NPU inference output](assets/video/gpu-poster.jpg)](https://ygong2501.github.io/inference-optimization/#video)
+
+The 4.004-second 4K video preserves the source frame rate, 24000/1001 fps. U/V use common bicubic reconstruction. H.264 is a display copy; the exact-output checks precede RGB conversion and encoding. [Validation record](evidence/validation.md).
+
+## 5. Discussion
+
+The 311 ms kernel used scalar gathers and repeated address calculations, with less operand reuse than the native convolutions. Block IO and preloading reduced it to 21.00 ms, but the adopted 17.58 ms path remained faster.
+
+Buffer lifetime analysis, output fusion and matrix reuse can guide other models. Halo rules, layouts, tile counts and register settings need new measurements on each workload. No cross-model speedup is claimed.
+
+## 6. Conclusion
+
+The adopted paths execute the same model faster while preserving its output bits. The NPU runs at 16.14–16.18 ms and the GPU at 17.58–17.68 ms. The next step is to measure the complete playback path and continue toward 15 ms single-frame latency.
+
+Decode, chroma reconstruction, encoding and display are outside the published inference times. Continuous playback and energy remain unvalidated. [Measurement protocol](evidence/methodology.md) · [Résumé bullets](RESUME.md).
+
+<details>
+<summary>Website maintenance</summary>
+
+The site uses plain HTML, CSS, SVG and JavaScript. Serve this directory over HTTP, for example with `python -m http.server 8090 --bind 127.0.0.1`. No frontend build is required.
+
+The GitHub Pages workflow deploys the static repository contents. All asset links are relative. The original workspace keeps the evidence exporter locally; it is not included in this public repository. Internal compiler patches, inference-kernel sources, exact driver details and per-frame fingerprints remain outside the public site.
+
+</details>
