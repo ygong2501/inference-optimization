@@ -1,4 +1,4 @@
-// @file Interactive NPU/GPU execution diagrams and charts, populated from the public experiment projection.
+// @file Interactive NPU/GPU execution diagrams, charts and same-frame video/detail controls, populated from public experiment data.
 // @see docs/code-index.xml
 import data from './evidence/data.js';
 
@@ -153,3 +153,58 @@ $('#latency-cards').innerHTML = ['npu', 'gpu'].map((backend) => {
 const milestoneLabels = ['Initial SLM', 'Row blocks + block IO', 'GRF256', 'Preload + residual reads'];
 $('#research-milestones').innerHTML = data.research.milestones.map(({ ms }, index) => `<div><strong class="milestone-value">${ms.toFixed(2)}<small>ms</small></strong><span class="milestone-label">${milestoneLabels[index]}</span></div>`).join('');
 render();
+
+const video = $('#demo-video');
+const videoButtons = [...document.querySelectorAll('[data-video]')];
+let videoGeneration = 0;
+let detailBackend = 'gpu';
+let desiredVideoPosition = 0;
+let resumeVideoPlayback = false;
+
+function updateDetail() {
+  const prefix = `./assets/video/f${$('#detail-frame').value.padStart(3, '0')}`;
+  for (const [kind, suffix] of [['source', 'source.webp'], ['output', `${detailBackend}.webp`], ['difference', `${detailBackend}-difference.png`]]) {
+    const path = `${prefix}-${suffix}`;
+    $(`#detail-${kind}`).src = path;
+    $(`#detail-${kind}-link`).href = path;
+  }
+  $('#detail-output-label').innerHTML = `Optimized ${detailBackend.toUpperCase()} <small>C4F32 Y · common U/V</small>`;
+  $('#detail-output').alt = `Actual optimized ${detailBackend.toUpperCase()} inference output at the same crop coordinates`;
+}
+
+videoButtons.forEach((button) => button.addEventListener('click', () => {
+  if (button.getAttribute('aria-pressed') === 'true') return;
+  const generation = ++videoGeneration;
+  if (video.readyState >= 1) {
+    desiredVideoPosition = video.ended ? 0 : video.currentTime;
+    resumeVideoPlayback = !video.paused && !video.ended;
+  }
+  const name = button.dataset.video;
+  videoButtons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+  $('#video-plane-label').textContent = name === 'source' ? 'Y: nearest ×2 · U/V: bicubic' : 'Y: C4F32 ×2 · U/V: bicubic';
+  $('#video-download').href = `./assets/video/${name}.mp4`;
+  $('#video-status').textContent = 'Loading clip…';
+  video.setAttribute('aria-label', name === 'source' ? 'Input display: nearest-neighbor Y enlargement and common bicubic chroma' : `Actual 4K output from the optimized ${name.toUpperCase()} inference executable`);
+  video.addEventListener('loadedmetadata', () => {
+    if (generation !== videoGeneration) return;
+    video.currentTime = Math.min(desiredVideoPosition, Math.max(0, video.duration - 1 / 24));
+    $('#video-status').textContent = '4.004 s · 23.976 fps · 4K display copy';
+    if (resumeVideoPlayback) video.play().catch(() => { $('#video-status').textContent = 'Press play to resume'; });
+  }, { once: true });
+  video.src = `./assets/video/${name}.mp4`;
+  if (name === 'source') video.removeAttribute('poster');
+  else video.poster = `./assets/video/${name}-poster.jpg`;
+  video.load();
+  if (name !== 'source') {
+    detailBackend = name;
+    updateDetail();
+  }
+}));
+$('#detail-frame').addEventListener('change', () => {
+  updateDetail();
+  desiredVideoPosition = Number($('#detail-frame').value) * 1001 / 24000;
+  resumeVideoPlayback = false;
+  video.pause();
+  if (video.readyState >= 1) video.currentTime = desiredVideoPosition;
+});
+video.addEventListener('error', () => { $('#video-status').textContent = 'Clip could not load — try the 4K link'; });

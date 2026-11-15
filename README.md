@@ -16,6 +16,8 @@ GitHub's [custom workflow documentation](https://docs.github.com/en/pages/gettin
 
 ## Evidence updates
 
+The page includes a four-second offline video demonstration: 96 consecutive frames processed by the delivered GPU and NPU executables, with complete FP32 Y comparison against each original backend. U/V use the same bicubic reconstruction; H.264 files are display copies. This does not extend the published inference timing to decode, color reconstruction, encoding or real-time playback.
+
 The public metrics were exported from retained experiment reports; no inference was rerun to create this page. Internal compiler patches, GPU kernel sources, exact driver details and experiment fingerprints remain local and are not included in this public repository. The local evidence exporter is not part of the deployable site.
 
 Before changing headline numbers, update the underlying evidence. Keep campaign-wide comparisons distinct from isolated changes, logical payload counts distinct from physical traffic, and throughput distinct from synchronous latency. The 15 ms single-frame target is still open.

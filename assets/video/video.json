@@ -1,0 +1,43 @@
+{
+  "frames": 96,
+  "fps": "24000/1001",
+  "duration_seconds": 4.004,
+  "input_size": [
+    1920,
+    1080
+  ],
+  "output_size": [
+    3840,
+    2160
+  ],
+  "roi_xywh": [
+    520,
+    520,
+    512,
+    512
+  ],
+  "sample_frames": [
+    0,
+    48,
+    95
+  ],
+  "scope": "Offline render of consecutive real source frames; not a real-time playback benchmark.",
+  "model_plane": "Y only",
+  "chroma": "Same bicubic U/V for all variants",
+  "color": "Full-range BT.709 working planes; 8-bit BT.709 H.264 display copies",
+  "source_display": "Nearest-neighbor Y \u00d72, common bicubic U/V",
+  "validation": {
+    "gpu": {
+      "frames_bitwise_exact": 96,
+      "different_fp32_elements": 0,
+      "reference": "Original model on the same backend"
+    },
+    "npu": {
+      "frames_bitwise_exact": 96,
+      "different_fp32_elements": 0,
+      "reference": "Original model on the same backend"
+    }
+  },
+  "unique_source_frames": 96,
+  "latency_benchmark": false
+}

@@ -55,12 +55,24 @@ Instrumented early/late subgroup barrier spans were approximately 3.42–3.52% /
 ## Scope and limitations
 
 - **The 15 ms synchronous target remains unmet:** NPU 16.14–16.18 ms; GPU 17.58–17.68 ms.
-- Six reference frames do not prove bitwise equality for every possible input, another device or another software version.
+- Six benchmark reference frames and the new 96-frame clip do not prove bitwise equality for every possible input, another device or another software version.
 - The work covers the inference call with complete FP32 output. Video decode, color conversion, display, continuous playback and energy consumption have not been accepted as an end-to-end product result.
 - No separately measured physical DDR, DMA or instruction-stall breakdown is claimed. Compiler plans and subgroup timestamps are labeled by what they measure.
 - The shared-halo patch is restricted to the tested six-cluster NHWC, row-layout-preserving view pattern. Column count, H6, subgroup shape and GRF256 are workload/hardware choices.
 - No cross-model speedup or universal NPU-versus-GPU ranking is claimed. Transferable ideas require new correctness and performance evidence on the new workload.
-- This public record includes architecture diagrams, aggregate results and the measurement protocol. Internal compiler patches, kernel snapshots, exact driver details, per-frame fingerprints, executable blobs and reference media remain local. It is not a standalone benchmark reproduction package.
+- This public record includes architecture diagrams, aggregate results, the measurement protocol and a four-second visual demonstration. Internal compiler patches, kernel snapshots, exact driver details, per-frame fingerprints, executable blobs and the full source media remain local. It is not a standalone benchmark reproduction package.
+
+## Actual video output
+
+- A new offline render uses 96 consecutive real frames at 24000/1001 fps (4.004 seconds). C4F32 is a **Y-plane spatial super-resolution model**. It does not infer RGB or change the frame rate.
+- Source: a short excerpt of the retained Doraemon test clip. The input is decoded as full-range BT.709 working planes. The complete 1920×1080 Y plane is fed to the actual delivered GPU/NPU executable, producing 3840×2160 FP32 Y.
+- U/V are enlarged with a common bicubic filter for every variant and recombined using the same BT.709 YCbCr-to-RGB transform. Chroma reconstruction, decode, RGB conversion, encoding and display remain outside the published inference latency.
+- For each new frame, the original model is executed on the same backend and compared with the optimized result. All **96/96 GPU** and **96/96 NPU** complete FP32 outputs match bit for bit. One retained input calibrates each reference configuration; no historical latency baseline is remeasured.
+- The 4K H.264 videos are 8-bit display copies, not the numeric equality proof. The selected 512×512 color crops are lossless WebP; the difference maps are absolute FP32 Y error ×1024, computed before RGB conversion and encoding.
+- The input display repeats Y pixels ×2 and shares the same bicubic U/V. It is labeled for pixel inspection; it is not a comparison against the scaler normally used by a player. The source has no pristine 4K ground truth, and this demonstration makes no new reconstruction-quality claim.
+- This is a processed video preview, not evidence that a complete real-time player pipeline meets 15 ms. Continuous playback timing, frame pacing and energy remain unvalidated.
+
+[Video metadata](../assets/video/video.json) · [Play the actual output](../index.html#video)
 
 ## Implementation notes and attribution
 
