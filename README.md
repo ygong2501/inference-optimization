@@ -1,6 +1,6 @@
 # Bit-exact inference on Intel NPU and GPU
 
-An English technical portfolio for Yikang Gong: an interactive C4F32 architecture case study with verified NPU/GPU results, source excerpts, correctness fingerprints and explicit limits. Built for GitHub Pages with plain HTML, CSS, SVG and JavaScript. No package install or frontend build is required.
+An English technical portfolio for Yikang Gong: an interactive C4F32 architecture case study with measured NPU/GPU results, a validation protocol and explicit limits. Built for GitHub Pages with plain HTML, CSS, SVG and JavaScript. No package install or frontend build is required.
 
 ## Preview
 
@@ -16,7 +16,7 @@ GitHub's [custom workflow documentation](https://docs.github.com/en/pages/gettin
 
 ## Evidence updates
 
-Within the original tsuzuku workspace, run `python -B portfolio/inference-optimization/tools/export-evidence.py` to regenerate `evidence/results.json`, `data.js`, `validation.md`, the selected implementation snapshots and font files from retained evidence. This reads reports and copies files; it does not run inference. The historical reports and source-generation tools are not included in the standalone package.
+The public metrics were exported from retained experiment reports; no inference was rerun to create this page. Internal compiler patches, GPU kernel sources, exact driver details and experiment fingerprints remain local and are not included in this public repository. The local evidence exporter is not part of the deployable site.
 
 Before changing headline numbers, update the underlying evidence. Keep campaign-wide comparisons distinct from isolated changes, logical payload counts distinct from physical traffic, and throughput distinct from synchronous latency. The 15 ms single-frame target is still open.
 

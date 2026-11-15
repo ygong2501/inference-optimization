@@ -1,0 +1,139 @@
+{
+  "title": "Bit-exact inference on Intel NPU and GPU",
+  "author": "Yikang Gong",
+  "date": "2026-11-15",
+  "model": {
+    "name": "ArtCNN C4F32",
+    "parameters": 47716,
+    "input": [
+      1,
+      1,
+      1080,
+      1920
+    ],
+    "output": [
+      1,
+      1,
+      2160,
+      3840
+    ],
+    "output_type": "FP32",
+    "convolutions": 7
+  },
+  "environment": {
+    "processor": "Intel Core Ultra 7 258V",
+    "architecture": "Lunar Lake",
+    "gpu": "Intel Arc 140V",
+    "npu": "Intel AI Boost / NPU 4000",
+    "runtime": "OpenVINO",
+    "power": "Balanced, AC power, unlocked clocks"
+  },
+  "npu": {
+    "baseline_ms": [
+      44.46,
+      46.15
+    ],
+    "baseline_label": "Historical default, 4 physical tiles",
+    "optimized_ms": [
+      16.140400010044686,
+      16.17669999541249
+    ],
+    "p95_ms": [
+      16.531599999871105,
+      16.541400004643947
+    ],
+    "iterations": [
+      373,
+      373
+    ],
+    "tiles": 6,
+    "column_groups": 15,
+    "height_schedule": "H6",
+    "planned_read_bytes": 26491264,
+    "planned_write_bytes": 41955840,
+    "planned_total_mib": 65.2762451171875,
+    "conv2_conv21_planned_write_bytes": 0
+  },
+  "gpu": {
+    "baseline_ms": [
+      21.11,
+      21.8
+    ],
+    "optimized_ms": [
+      17.6821,
+      17.57625
+    ],
+    "p95_ms": [
+      18.0537,
+      18.05256
+    ],
+    "iterations": [
+      341,
+      342
+    ],
+    "planned_intermediate_saving_mib": 63.28125
+  },
+  "pipeline": {
+    "device": "NPU",
+    "mean_ms_per_frame": [
+      14.92076,
+      14.88408
+    ],
+    "completion_latency_ms": [
+      29.8284,
+      29.7678
+    ],
+    "note": "Two requests improve throughput; they do not achieve 15 ms single-frame latency."
+  },
+  "research": {
+    "old_slm_ms": 311.3579,
+    "best_slm_ms": 21.0024,
+    "adopted": false,
+    "milestones": [
+      {
+        "label": "Initial SLM experiment",
+        "ms": 311.3579
+      },
+      {
+        "label": "Row blocks + block IO",
+        "ms": 32.69815
+      },
+      {
+        "label": "GRF256",
+        "ms": 30.2505
+      },
+      {
+        "label": "Preload + residual block reads",
+        "ms": 21.0024
+      }
+    ],
+    "barrier_subgroup_share_percent": {
+      "early": [
+        3.418,
+        3.524
+      ],
+      "late": [
+        3.136,
+        3.268
+      ]
+    },
+    "note": "Experimental kernel recovery, not an additional speedup of the adopted 17.58 ms GPU path."
+  },
+  "validation": {
+    "frames": 6,
+    "elements_per_frame": 8294400,
+    "total_elements": 49766400,
+    "weights_unchanged": true,
+    "bitwise_equal_to_each_backend_reference": true,
+    "cross_backend_bitwise_equality_claimed": false,
+    "timing": "Batch 1; full caller-accessible FP32 output; profiling off; 30 s CPU-quiet gate; 2 s warmup; at least 6 s timing."
+  },
+  "limitations": [
+    "Historical baselines span driver, resource and buffer-policy changes; these are campaign results, not an isolated same-session A/B.",
+    "Compiler payload estimates are not measured physical DDR traffic.",
+    "Subgroup timestamp shares are not fractions of single-frame wall time.",
+    "15 ms synchronous single-frame latency remains unmet.",
+    "Six reference frames do not prove equality for every input or another device.",
+    "Continuous playback, energy and cross-model portability have not been validated."
+  ]
+}
